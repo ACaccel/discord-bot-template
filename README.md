@@ -1,4 +1,4 @@
-# Discord Bot
+# Discord Bot Template
 
 A discord bot based on discord.js library. This bot is modified from my self-host bot. You can customize it by adding your own commands, bots, and features.
 
