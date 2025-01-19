@@ -1,0 +1,289 @@
+{
+    "admin": "",
+    "guilds": [
+        {
+            "guild_id": "",
+            "channels": {
+                "debug": "",
+                "imgen": "",
+                "earthquake": ""
+            },
+            "roles": {
+                "earthquake": ""
+            }
+        },{
+            "guild_id": "",
+            "channels": {
+                "debug": ""
+            },
+            "roles": {
+            }
+        }
+    ],
+    "identities": {
+        "高松燈": {
+            "avator_url": "https://cdn.discordapp.com/attachments/1197540127073910814/1330642965999390720/tomori.jpg?ex=678eb955&is=678d67d5&hm=b45b402f74daaa6d6aaab747f8acdab2609f8bf9c3cf61ae12311c09af139c72&",
+            "color_role": "淺紫"
+        },
+        "千早愛音": {
+            "avator_url": "https://cdn.discordapp.com/attachments/1197540127073910814/1330642988493176863/anonn.jpg?ex=678eb95a&is=678d67da&hm=af6239556ca2189f7fc0f041de7a5ab04755bea66009740a7dd94bccb028543c&",
+            "color_role": "粉紅"
+        },
+        "長崎爽世": {
+            "avator_url": "https://cdn.discordapp.com/attachments/1197540127073910814/1330643011234693311/soyo.jpg?ex=678eb960&is=678d67e0&hm=1d5622d8fede01d8d4a6063a20b0e204274a0cdf83b27112e99edd0dee7c3dc8&",
+            "color_role": "黃橘"
+        },
+        "要樂奈": {
+            "avator_url": "https://cdn.discordapp.com/attachments/1197540127073910814/1330643072270209055/rana.jpg?ex=678eb96e&is=678d67ee&hm=d982b23460c170f381ad11fc35190ec4e8b2b2cff4157fc6ec611edf0ca7aea3&",
+            "color_role": "檸檬綢色"
+        },
+        "椎名立希": {
+            "avator_url": "https://cdn.discordapp.com/attachments/1197540127073910814/1330643059750338611/taki.jpeg?ex=678eb96b&is=678d67eb&hm=31a393631a6a5e51e1219d0420495ec6d72fe8d6417651bd38deac40939fce77&",
+            "color_role": "紅褐"
+        },
+        "三角初華": {
+            "avator_url": "https://cdn.discordapp.com/attachments/1197540127073910814/1330630521205690440/muica.jpg?ex=678eadbe&is=678d5c3e&hm=4ce3baa0480273abd4a584a1cfca56abfc8109adcfa0abcdae921028f68d129d&",
+            "color_role": "黃"
+        },
+        "若葉睦": {
+            "avator_url": "https://cdn.discordapp.com/attachments/1197540127073910814/1330630922730471594/mutsumi-2.jpg?ex=678eae1d&is=678d5c9d&hm=278770e46401d251a495777e87e39bb4f066940822d8403aa19eacfa4d413895&",
+            "color_role": "香檳粉紅色"
+        },
+        "祐天寺にゃむ": {
+            "avator_url": "https://cdn.discordapp.com/attachments/1197540127073910814/1330630935867297922/nyamuchi.jpg?ex=678eae21&is=678d5ca1&hm=4cae30deee09d95ddbb9f68c173c26335794ba425e2d82b44b0f3156abf61030&",
+            "color_role": "深紫"
+        },
+        "豐川祥子": {
+            "avator_url": "https://cdn.discordapp.com/attachments/1197540127073910814/1330630949398118441/sakiko-2.jpg?ex=678eae24&is=678d5ca4&hm=367d415c076ea2df13e332501d5896d4f3ead1a00124b6cc1642fb09a6ceb6d8&",
+            "color_role": "淺藍"
+        },
+        "八幡海鈴": {
+            "avator_url": "https://cdn.discordapp.com/attachments/1197540127073910814/1330630964723974195/umiri.jpg?ex=678eae27&is=678d5ca7&hm=6b551f9ea25a8b861a1677fd644f5de06f3fbf222c8347dfd00eed776a789ec0&",
+            "color_role": "深藍"
+        }
+    },
+    "commands": [
+        {
+            "name": "help",
+            "description": "官方指令清單"
+        },{
+            "name": "bug_report",
+            "description": "回報問題",
+            "options": {
+                "string": [
+                    {
+                        "name": "content",
+                        "description": "問題描述",
+                        "required": true
+                    }
+                ]
+            }
+        },{
+            "name": "talk",
+            "description": "讓機器人說話",
+            "options": {
+                "channel": [
+                    {
+                        "name": "channel",
+                        "description": "選擇頻道",
+                        "required": true
+                    }
+                ],
+                "string": [
+                    {
+                        "name": "content",
+                        "description": "就是內容",
+                        "required": true
+                    }
+                ]
+            }
+        },{
+            "name": "change_avatar",
+            "description": "人格變換",
+            "options": {
+                "string": [
+                    {
+                        "name": "identity",
+                        "description": "就是身分",
+                        "required": true,
+                        "choices": [
+                            { "name": "高松燈", "value": "高松燈" },
+                            { "name": "千早愛音", "value": "千早愛音" },
+                            { "name": "長崎爽世", "value": "長崎爽世" },
+                            { "name": "要樂奈", "value": "要樂奈" },
+                            { "name": "椎名立希", "value": "椎名立希" },
+                            { "name": "若葉睦", "value": "若葉睦" },
+                            { "name": "豐川祥子", "value": "豐川祥子" },
+                            { "name": "祐天寺にゃむ", "value": "祐天寺にゃむ" },
+                            { "name": "三角初華", "value": "三角初華" },
+                            { "name": "八幡海鈴", "value": "八幡海鈴" }
+                        ]
+                    }
+                ]
+            }
+        },{
+            "name": "search_anime_scene",
+            "description": "搜尋動漫截圖來源",
+            "options": {
+                "attachment": [
+                    {
+                        "name": "image",
+                        "description": "動漫截圖",
+                        "required": true
+                    }
+                ],
+                "number": [
+                    {
+                        "name": "display_num",
+                        "description": "顯示幾筆搜尋結果（預設1筆）",
+                        "required": false
+                    }
+                ]
+            }
+        },{
+            "name": "pin_message",
+            "description": "釘選訊息",
+            "options": {
+                "string": [
+                    {
+                        "name": "action",
+                        "description": "釘選或取消釘選",
+                        "required": true,
+                        "choices": [
+                            { "name": "釘選", "value": "pin" },
+                            { "name": "取消釘選", "value": "unpin" }
+                        ]
+                    },{
+                        "name": "message_link",
+                        "description": "要釘選的訊息連結",
+                        "required": true
+                    }
+                ]
+            }
+        },{
+            "name": "record",
+            "description": "錄音",
+            "options": {
+                "string": [
+                    {
+                        "name": "action",
+                        "description": "開始或停止錄音",
+                        "required": true,
+                        "choices": [
+                            { "name": "開始", "value": "start" },
+                            { "name": "停止", "value": "stop" },
+                            { "name": "儲存音檔 (last n minutes)", "value": "save" }
+                        ]
+                    }
+                ],
+                "number": [
+                    {
+                        "name": "duration",
+                        "description": "錄音時間 (last n minutes)",
+                        "required": false
+                    }
+                ]
+            }
+        },{
+            "name": "add_reply",
+            "description": "新增自動回覆",
+            "options": {
+                "string": [
+                    {
+                        "name": "keyword",
+                        "description": "關鍵字",
+                        "required": true
+                    },{
+                        "name": "reply",
+                        "description": "回覆",
+                        "required": true
+                    }
+                ]
+            }
+        },{
+            "name": "delete_reply",
+            "description": "刪除自動回覆",
+            "options": {
+                "string": [
+                    {
+                        "name": "keyword",
+                        "description": "關鍵字",
+                        "required": true
+                    },{
+                        "name": "reply",
+                        "description": "回覆",
+                        "required": true
+                    }
+                ]
+            }
+        },{
+            "name": "give_score",
+            "description": "給分"
+        },{
+            "name": "update_role",
+            "description": "更新身分組"
+        },{
+            "name": "level_detail",
+            "description": "查看等級詳細資訊",
+            "options": {
+                "number": [
+                    {
+                        "name": "left",
+                        "description": "左邊界",
+                        "required": true
+                    },{
+                        "name": "right",
+                        "description": "右邊界",
+                        "required": true
+                    }
+                ]
+            }
+        },{
+            "name": "todo_list",
+            "description": "待辦事項",
+            "options": {
+                "string": [
+                    {
+                        "name": "action",
+                        "description": "新增或刪除",
+                        "required": true,
+                        "choices": [
+                            { "name": "新增 (+ content: 內容)", "value": "add" },
+                            { "name": "刪除 (+ content: 編號)", "value": "delete" },
+                            { "name": "查看", "value": "list" }
+                        ]
+                    },{
+                        "name": "content",
+                        "description": "內容",
+                        "required": false
+                    }
+                ]
+            }
+        },{
+            "name": "get_avatar",
+            "description": "取得使用者頭像",
+            "options": {
+                "user": [
+                    {
+                        "name": "user",
+                        "description": "選擇對象",
+                        "required": true
+                    }
+                ]
+            }
+        }
+    ],
+    "level_roles": {
+        "level_10": "活網菜雞",
+        "level_15": "活網經驗者",
+        "level_20": "活網資深者",
+        "level_25": "活網老屁股",
+        "level_30": "活網入魔者",
+        "level_35": "活網魔人",
+        "level_40": "活網狂魔",
+        "level_45": "活網魔王",
+        "level_50": "活網魔君",
+        "level_55": "活網魔尊",
+        "level_60": "活網幽天帝"
+    }
+}

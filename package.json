@@ -1,0 +1,36 @@
+{
+  "name": "discord-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "install-lock": "yarn install --frozen-lockfile",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "tomori": "ts-node src/bot/tomori/tomori.ts",
+    "nijika": "ts-node src/bot/nijika/nijika.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ACaccel/discord-bot.git"
+  },
+  "author": "ACaccel, rbt4168",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ACaccel/discord-bot/issues"
+  },
+  "homepage": "https://github.com/ACaccel/discord-bot#readme",
+  "dependencies": {
+    "@kirdock/discordjs-voice-recorder": "^1.1.1",
+    "@types/express": "^5.0.0",
+    "axios": "^1.7.7",
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "mee6-levels-api": "^1.3.1",
+    "mongoose": "^8.7.0",
+    "sodium": "^3.0.2",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.6.2"
+  }
+}
