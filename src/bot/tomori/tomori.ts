@@ -4,17 +4,17 @@ import {
     Events,
 } from 'discord.js';
 import dotenv from "dotenv";
-import express from 'express';
 
-import { Config, AllowedTextChannel } from '@dcbotTypes';
-import utils from '@utils';
+import { Config } from '@dcbotTypes';
 import { Tomori } from './types';
+import { auto_reply } from '@cmd';
+import utils from '@utils';
 import config from './config.json';
 
 dotenv.config({ path: './src/bot/tomori/.env' });
 
 // init
-const client = new Client({ 
+const client: Client = new Client({ 
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMembers,
@@ -35,7 +35,7 @@ const client = new Client({
         GatewayIntentBits.GuildScheduledEvents,
         GatewayIntentBits.AutoModerationConfiguration,
         GatewayIntentBits.AutoModerationExecution
-    ]
+    ] 
 });
 const tomori = new Tomori(
     client,
@@ -48,52 +48,86 @@ const tomori = new Tomori(
 // client events
 tomori.login();
 tomori.client.on(Events.ClientReady, async () => {
-    // bot online init
-    tomori.registerGuild();
-    await tomori.registerSlashCommands();
-    tomori.initSlashCommandsHandlers();
+    try {
+        // bot init process
+        tomori.registerGuild();
+        await tomori.connectGuildDB();
+        await tomori.registerSlashCommands();
+        tomori.initSlashCommandsHandlers();
+        tomori.initModalHandlers();
+        tomori.initButtonHandlers();
 
-    // reboot message
-    Object.entries(tomori.guildInfo).forEach(async ([guild_id, guild]) => {
-        const debug_ch = tomori.guildInfo[guild_id].channels.debug as AllowedTextChannel;
-        await debug_ch.send(`${guild.bot_name}重開機囉!`);
-    });
+        await tomori.rebootMessage();
+    } catch (e) {
+        utils.errorLogger(tomori.clientId, null, e);
+    }
 });
 
 tomori.client.on(Events.InteractionCreate, async (interaction) => {
-    if (interaction.inGuild()) {
-        if (interaction.isChatInputCommand()) {
-            tomori.executeSlashCommands(tomori, interaction);
+    try {
+        if (interaction.inGuild()) {
+            if (interaction.isChatInputCommand()) {
+                await tomori.executeSlashCommands(interaction);
+            } else if (interaction.isModalSubmit()) {
+                await tomori.executeModalSubmit(interaction);
+            } else if (interaction.isButton()) {
+                await tomori.executeButton(interaction);
+            } else {
+                if (!interaction.isAutocomplete()) {
+                    await interaction.reply({ content: '目前尚不支援此類型的指令', ephemeral: true });
+                }
+            }
         } else {
             if (!interaction.isAutocomplete()) {
-                await interaction.reply({ content: '目前尚不支援此類型的指令喔!', ephemeral: true });
+                await interaction.reply({ content: '目前尚不支援在伺服器外使用', ephemeral: true });
             }
         }
-    } else {
-        if (!interaction.isAutocomplete()) {
-            await interaction.reply({ content: '目前尚不支援在伺服器外使用喔!', ephemeral: true });
-        }
+    } catch (e) {
+        utils.errorLogger(tomori.clientId, interaction.guild?.id, e);
     }
 });
 
 tomori.client.on(Events.MessageCreate, async (message) => {
-    const content = message.content;
+    try {
+        if (message.guildId)
+            await auto_reply(message, tomori, message.guildId);
+    } catch (e) {
+        utils.errorLogger(tomori.clientId, message.guild?.id, e);
+    }
+});
 
-    // prevent bot from replying to itself
-    if (message.author.id === tomori.client.user?.id) return;
+tomori.client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
+    try {
+        await tomori.detectMessageUpdate(oldMessage, newMessage);
+    } catch (e) {
+        utils.errorLogger(tomori.clientId, newMessage.guild?.id, e);
+    }
+});
+
+tomori.client.on(Events.MessageDelete, async (message) => {
+    try {
+        await tomori.detectMessageDelete(message);
+    } catch (e) {
+        utils.errorLogger(tomori.clientId, message.guild?.id, e);
+    }
+});
+
+tomori.client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
+    try {
+        await tomori.detectGuildMemberUpdate(oldMember, newMember);
+    } catch (e) {
+        utils.errorLogger(tomori.clientId, newMember.guild.id, e);
+    }
+});
+
+tomori.client.on(Events.GuildCreate, async (guild) => {
+    try {
+        await tomori.detectGuildCreate(guild);
+    } catch (e) {
+        utils.errorLogger(tomori.clientId, guild.id, e);
+    }
 });
 
 tomori.client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
 
-});
-
-const app = express();
-app.use(express.json());
-
-app.get('/', (req, res) => {
-    res.status(200).send('Hello World!');
-})
-
-app.listen(process.env.PORT, () => {
-    utils.systemLogger(tomori.clientId, `Express server is running on port ${process.env.PORT}`)
 });

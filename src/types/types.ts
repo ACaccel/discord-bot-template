@@ -8,9 +8,9 @@ import {
     TextChannel,
     PublicThreadChannel,
     ChatInputCommandInteraction,
-    GuildMember,
     Role,
-    EmbedBuilder
+    ModalSubmitInteraction,
+    ButtonInteraction
 } from 'discord.js';
 import { VoiceConnection } from "@discordjs/voice";
 import { VoiceRecorder } from '@kirdock/discordjs-voice-recorder';
@@ -18,21 +18,29 @@ import db from '@db';
 import utils from '@utils';
 import {
     buildSlashCommands,
-    cmd_handler
+    cmd_handler,
+    modal_handler,
+    button_handler
 } from '@cmd';
+import { Connection, Model } from 'mongoose';
+import slash_command_config from '../slash_command.json';
 
 export class BaseBot {
+    private token: string;
+    private mongoURI?: string;
     public adminId?: string;
     public client: Client;
-    private token: string;
-    private mongoURI: string;
     public clientId: string;
     public config: Config;
     public guildInfo: Record<string, GuildInfo>;
     
     public slashCommands?: RESTPostAPIChatInputApplicationCommandsJSONBody[];
     public slashCommandsHandler?: Map<string, Function>;
+    public modalHandler?: Map<string, Function>;
+    public buttonHandler?: Map<string, Function>;
     public voice?: Voice;
+
+    public help_msg: string;
 
     public constructor(client: Client, token: string, mongoURI: string, clientId: string, config: Config) {
         this.client = client;
@@ -41,14 +49,26 @@ export class BaseBot {
         this.clientId = clientId;
         this.config = config;
         this.guildInfo = {};
+        this.help_msg = '';
     }
 
     public login = async () => {
         utils.systemLogger(this.clientId, "Logging in...");
-        await this.client.login(this.token);
-        utils.systemLogger(this.clientId, `Logged in as ${this.client.user?.username}!`);
+        await this.client.login(this.token)
+        .catch((err) => {
+            utils.systemLogger(this.clientId, `Failed to login: ${err}`);
+        });
+        if (!this.client.user) {
+            utils.systemLogger(this.clientId, "Failed to login: No user found.");
+            return;
+        }
+        utils.systemLogger(this.clientId, `Logged in as ${this.client.user.username}!`);
 
-        db.dbConnect(this.mongoURI, this.clientId);
+        // check configuration files
+        if (!slash_command_config) {
+            utils.systemLogger(this.clientId, "Please setup your slash_command.json file.");
+            return;
+        }
 
         if (this.config.admin) {
             this.adminId = this.config.admin;
@@ -57,41 +77,38 @@ export class BaseBot {
 
     public registerGuild = () => {
         utils.systemLogger(this.clientId, "Registering guilds...");
-        try {
+        try {            
             let guild_num = 0;
-            this.config.guilds.forEach((config) => {
-                // register channels
+            this.client.guilds.cache.forEach((guild) => {
+                const config = this.config.guilds?.[guild.id];
+                
                 let newChannel: Record<string, Channel> = {};
-                Object.entries(config.channels).forEach(([name, id]) => {
-                    const channel = this.client.channels.cache.get(id);
-                    if (channel) {
-                        newChannel[name] = channel;
-                    }
-                });
-
-                // register roles
                 let newRole: Record<string, Role> = {};
-                Object.entries(config.roles).forEach(([name, id]) => {
-                    const role = this.client.guilds.cache.get(config.guild_id)?.roles.cache.get(id);
-                    newRole[name] = role as Role;
-                });
-
-                // register guild members
-                let memberList: Record<string, GuildMember> = {};
-                this.client.guilds.cache.get(config.guild_id)?.members.cache.forEach((member) => {
-                    memberList[member.id] = member;
-                });
+                if (config) {
+                    // register channels
+                    Object.entries(config.channels).forEach(([name, id]) => {
+                        const channel = this.client.channels.cache.get(id);
+                        if (channel) {
+                            newChannel[name] = channel;
+                        }
+                    });
+    
+                    // register roles
+                    Object.entries(config.roles).forEach(([name, id]) => {
+                        const role = guild.roles.cache.get(id);
+                        newRole[name] = role as Role;
+                    });
+                }
 
                 let newGuild: GuildInfo = {
-                    bot_name: this.client.guilds.cache.get(config.guild_id)?.members.cache.get(this.clientId)?.displayName as string,
-                    guild: this.client.guilds.cache.get(config.guild_id) as Guild,
+                    bot_name: guild.members.cache.get(this.clientId)?.displayName as string,
+                    guild: guild,
                     channels: newChannel,
-                    roles: newRole,
-                    members: memberList
+                    roles: newRole
                 };
-                this.guildInfo[config.guild_id] = newGuild;
+                this.guildInfo[guild.id] = newGuild;
                 guild_num++;
-                utils.systemLogger(this.clientId, `${guild_num}. ${newGuild.guild.id} - ${newGuild.guild.name}`);
+                utils.systemLogger(this.clientId, `${guild_num}. ${guild.id} - ${guild.name}`);
             });
 
             utils.systemLogger(this.clientId, "Successfully registered all guilds.");
@@ -100,6 +117,61 @@ export class BaseBot {
         }
     }
 
+    public connectGuildDB = async () => {
+        utils.systemLogger(this.clientId, "Connecting to MongoDB...");
+        if (!this.mongoURI) {
+            utils.systemLogger(this.clientId, "No MongoDB URI.");
+            return;
+        }
+
+        try {
+            await Promise.all(Object.entries(this.guildInfo).map(async ([guild_id, guild]) => {
+                const database = await db.dbConnect(this.mongoURI!, guild_id, this.clientId)
+                .catch((err) => {
+                    utils.systemLogger(this.clientId, `Failed to connect to MongoDB for guild ${guild_id}: ${err}`);
+                });
+                if (database && this.guildInfo[guild_id]) {
+                    this.guildInfo[guild_id].db = database;
+                    utils.systemLogger(this.clientId, `MongoDB for guild: ${guild_id} - ${guild.guild.name} connected.`);
+                } else {
+                    utils.systemLogger(this.clientId, `Failed to connect to MongoDB for guild ${guild_id}.: database is null or guildInfo is null`);
+                }
+            }));
+        } catch (err) {
+            utils.systemLogger(this.clientId, `Failed to connect to MongoDB: ${err}`);
+        }
+    }
+
+    public rebootMessage = async () => {
+        Object.entries(this.guildInfo).forEach(async ([guild_id, guild]) => {
+            const guildInfo = this.guildInfo[guild_id];
+            if (guildInfo && guildInfo.channels && guildInfo.channels.debug) {
+                const debug_ch = guildInfo.channels.debug as AllowedTextChannel;
+                if (debug_ch) {
+                    await debug_ch.send(`${guild.bot_name}重開機囉!`);
+                }
+            }
+        });
+    }
+
+    public initVoice = () => {
+        this.voice = {
+            recorder: new VoiceRecorder({}, this.client),
+            connection: null
+        }
+    }
+
+    public getToken = () => {
+        return this.token;
+    }
+    
+    public getMongoURI = () => {
+        return this.mongoURI;
+    }
+
+    //============================================//
+    //============== slash commands ==============//
+    //============================================//
     public initSlashCommandsHandlers = () => {
         this.slashCommandsHandler = new Map<string, Function>();
         Object.entries(cmd_handler).forEach(([name, handler]) => {
@@ -112,91 +184,134 @@ export class BaseBot {
     public registerSlashCommands = async () => {
         utils.systemLogger(this.clientId, "Registering commands...");
 
-        if (!this.config.commands) {
-            utils.systemLogger(this.clientId, "No commands to register.");
-            return;
-        }
-
-        // build slash commands from config
-        this.slashCommands = this.config.commands.map((cmd) => {
-            return buildSlashCommands(cmd);
-        });
-
-        // register slash commands to discord
-        const rest = new REST().setToken(this.token)
-        await rest.put(Routes.applicationCommands(this.clientId), { body: [] })
-        .catch((err) => {
-            utils.systemLogger(this.clientId, `Failed to clear application (/) commands: ${err}`);
-        });
-
-        Object.entries(this.guildInfo).forEach(async ([guildId, guildInfo]) => {
-            await rest.put(Routes.applicationGuildCommands(this.clientId, guildId), { body: this.slashCommands })
-            .catch((err) => {
-                utils.systemLogger(this.clientId, `Failed to register guild (/) commands: ${err}`);
-            });
-        });
-
-        utils.systemLogger(this.clientId, `Successfully register ${this.slashCommands?.length} application (/) commands.`)
-    }
-
-    public executeSlashCommands = async (bot: BaseBot, interaction: ChatInputCommandInteraction) => {
-        if (!interaction.isCommand()) return;
-
-        if (!this.config.commands) {
-            interaction.reply({ content: "No commands to execute.", ephemeral: true });
-            return;
-        }
-
-        const command = this.config.commands.find((cmd) => cmd.name === interaction.commandName);
-        if (command) {
-            try {
-                const handler = this.slashCommandsHandler?.get(interaction.commandName)
-                if (handler) {
-                    await handler(interaction, this);
-                }
-            } catch (error) {
-                utils.errorLogger(this.clientId, error);
+        try {
+            if (!this.config.commands) {
+                utils.systemLogger(this.clientId, "No commands to register.");
+                return;
             }
+
+            // build slash commands from config
+            this.slashCommands = [];
+            this.config.commands.forEach((cmd) => {
+                const command_config = slash_command_config.find((config) => config.name === cmd);
+                if (command_config) {
+                    let slashCommand = buildSlashCommands(command_config);
+                    this.slashCommands?.push(slashCommand);
+                }
+            });
+
+            // register slash commands to discord
+            const rest = new REST().setToken(this.token)
+            await rest.put(Routes.applicationCommands(this.clientId), { body: [] })
+            Object.entries(this.guildInfo).forEach(async ([guildId, guildInfo]) => {
+                await rest.put(Routes.applicationGuildCommands(this.clientId, guildId), { body: this.slashCommands })
+            });
+
+            utils.systemLogger(this.clientId, `Successfully register ${this.slashCommands.length} application (/) commands.`)
+        } catch (err) {
+            utils.systemLogger(this.clientId, `Failed to register commands: ${err}`);
+        }
+    }
+
+    public executeSlashCommands = async (interaction: ChatInputCommandInteraction) => {
+        if (!this.config.commands) {
+            interaction.reply({ content: "Config of commands not found.", ephemeral: true });
+            return;
+        }
+        if (!this.slashCommandsHandler) {
+            interaction.reply({ content: "Command handler not found.", ephemeral: true });
+            return;
         }
 
+        const command = this.config.commands.find((cmd) => cmd === interaction.commandName);
+        if (command) {
+            const handler = this.slashCommandsHandler.get(interaction.commandName)
+            if (handler) {
+                await handler(interaction, this);
+            }
+        } else {
+            interaction.reply({ content: "Command not found.", ephemeral: true });
+        }
+        
         const channel_log = `Command: /${interaction.commandName}, User: ${interaction.user.displayName}, Channel: <#${interaction.channel?.id}>`;
-        utils.channelLogger(bot.guildInfo[interaction.guildId as string].channels.debug, undefined, channel_log);
-        const guild_log = `Command: /${interaction.commandName}, User: ${interaction.user.displayName}, Channel: ${interaction.guild?.channels.cache.get(interaction.channelId)?.name}`;
-        utils.guildLogger(this.clientId, 'interaction_create', guild_log, interaction.guild?.name as string);
+        utils.channelLogger(this.guildInfo[interaction.guildId as string]?.channels?.debug, undefined, channel_log);
+        if (interaction.guild) {
+            const guild_log = `Command: /${interaction.commandName}, User: ${interaction.user.displayName}, Channel: ${interaction.guild?.channels.cache.get(interaction.channelId)?.name}`;
+            utils.guildLogger(this.clientId, interaction.guild.id, 'interaction_create', guild_log, interaction.guild?.name as string);
+        }
     }
-    
-    public initVoice = () => {
-        this.voice = {
-            recorder: new VoiceRecorder({}, this.client),
-            connection: null
+
+    //=============================================//
+    //============== modal commands ===============//
+    //=============================================//
+    public initModalHandlers = () => {
+        this.modalHandler = new Map<string, Function>()
+        Object.entries(modal_handler).forEach(([name, handler]) => {
+            if (typeof handler === 'function') {
+                this.modalHandler?.set(name, handler);
+            }
+        });
+    }
+
+    public executeModalSubmit = async (interaction: ModalSubmitInteraction) => {
+        if (!this.modalHandler) {
+            interaction.reply({ content: "Modal handler not found.", ephemeral: true });
+            return;
+        }
+
+        const handler = this.modalHandler.get(interaction.customId);
+        if (handler) {
+            await handler(interaction, this);
+        }
+    }
+
+    //=============================================//
+    //============== button commands ==============//
+    //=============================================//
+    public initButtonHandlers = () => {
+        this.buttonHandler = new Map<string, Function>();
+        Object.entries(button_handler).forEach(([name, handler]) => {
+            if (typeof handler === 'function') {
+                this.buttonHandler?.set(name, handler);
+            }
+        });
+    }
+
+    public executeButton = async (interaction: ButtonInteraction) => {
+        if (!this.buttonHandler) {
+            interaction.reply({ content: "Button handler not found.", ephemeral: true });
+            return;
+        }
+
+        // customId format: <button_type>|<button_value>
+        const button_type = interaction.customId.split('|')[0];
+        const handler = this.buttonHandler.get(button_type);
+        if (handler) {
+            await handler(interaction, this);
         }
     }
 }
 
 export interface Config {
     admin?: string;
-    guilds: GuildConfig[];
-    identities?: Record<string, Identity>;
-    commands?: Command[];
+    guilds?: Record<string, GuildConfig>;
+    commands?: string[];
 }
 
 export interface GuildInfo {
     bot_name: string;
     guild: Guild
-    channels: Record<string, Channel>;
-    roles: Record<string, Role>;
-    members: Record<string, GuildMember>;
+    channels?: Record<string, Channel>;
+    roles?: Record<string, Role>;
+    db?: {
+        connection: Connection;
+        models: Record<string, Model<any>>;
+    }
 }
 
 interface GuildConfig {
-    guild_id: string;
     channels: Record<string, string>;
     roles: Record<string, string>;
-}
-
-interface Identity {
-    avator_url: string;
-    color_role?: string;
 }
 
 export interface Command {
